@@ -1,2 +1,8 @@
 # findmydomains
-Finds apex domains that you own
+Find apex domains that you own
+
+## Usage:
+```
+from findmydomains import FindMyDomains
+FindMyDomains("google.com")
+```
