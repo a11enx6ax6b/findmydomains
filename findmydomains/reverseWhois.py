@@ -1,15 +1,19 @@
 import json
 import requests
 import re
+from datetime import date
 api_url="https://api.whoxy.com"
 class ReverseWhois():
   def __init__(self,api_config_file):
     self.api_config_file=api_config_file
+    self.active_domains={}
+    self.today=date.today()
   def load_rwhois_token(self):
     with open(self.api_config_file,'r') as file:
       tokens=json.load(file)
       self.rwhois_token=tokens["reversewhois_api_token"]
       self.whois_token=tokens["whois_api_token"]
+
   def reverse_whois(self,seed_domain):
     self.seed_domain=seed_domain
     self.domain_value=seed_domain.split(".")[-2] if seed_domain.split(".")[-2] not in ["com","co"] else seed_domain.split(".")[-3]
@@ -18,43 +22,57 @@ class ReverseWhois():
     headers = {
         "x-rapidapi-key": self.whois_token,
         "x-rapidapi-host": "zozor54-whois-lookup-v1.p.rapidapi.com"
-    }
+    } # whois -> new fn
     response = requests.get(url, headers=headers, params=querystring)
     response=response.json()
     organziation,email,nameserver=set(),set(),set()
-    for info in response["contacts"].values():
-      organziation.add(info[0]['organization'])
-      email.add(info[0]['email'])
+    if isinstance(response["contacts"],dict):
+        for info in response["contacts"].values():
+            organziation.add(info[0]['organization'])
+            email.add(info[0]['email'])
     nameserver=response["nameserver"]
-    verified_organization,verified_email,verified_nameserver=self.verify_data(organziation,email,nameserver)
+    verified_organization,verified_email,verified_nameserver=self.verify_data(organziation,email,nameserver) #optimize
     if verified_organization:
       for org in verified_organization:
-        response_rwhois_by_company_name=requests.get(f"{api_url}/?key={self.rwhois_token}&reverse=whois&company={org}&mode=micro")
+        response_rwhois_by_company_name=requests.get(f"{api_url}/?key={self.rwhois_token}&reverse=whois&company={org}&mode=micro") 
+        #pagination needed #1#
         response_rwhois_by_company_name=response_rwhois_by_company_name.json()
-        self.generate_output(response_rwhois_by_company_name)
+        self.capture_rwhois_result(response_rwhois_by_company_name)
     if verified_email:
       for email in verified_email:
         response_rwhois_by_email=requests.get(f"{api_url}/?key={self.rwhois_token}&reverse=whois&email={email}&mode=micro")
         response_rwhois_by_email=response_rwhois_by_email.json()
-        self.generate_output(response_rwhois_by_email)
-
-  def generate_output(self,response_rwhois):
-    identifier = next(iter(response_rwhois["search_identifier"].values()))
-    print("=" * 50)
-    print(f"Domain names found and its expiry Date ( Identifier: {identifier} )")
-    print("=" * 50)
-
+        self.capture_rwhois_result(response_rwhois_by_email)
+    return self.active_domains    
+  def capture_rwhois_result(self,response_rwhois):
     for result in response_rwhois["search_result"]:
         domain_name = result["domain_name"]
         try:
-          expiry_date = result["expiry_date"]
+            expiry_date = result["expiry_date"]
         except:
-          expiry_date = "No info"
-        print(f"Domain: {domain_name}")
-        print(f"Expiry Date: {expiry_date}")
-        print("-" * 50) 
+            expiry_date = ""
+        if domain_name and expiry_date:
+          if date.fromisoformat(expiry_date)>self.today:
+            self.active_domains[domain_name]=expiry_date
+    return self.active_domains
+        
+  #def generate_output(self,response_rwhois):
+    # identifier = next(iter(response_rwhois["search_identifier"].values()))
+    # print("=" * 50)
+    # print(f"Domain names found and its expiry Date ( Identifier: {identifier} )")
+    # print("=" * 50)
 
-    print("=" * 50)
+    # for result in response_rwhois["search_result"]:
+    #     domain_name = result["domain_name"]
+    #     try:
+    #       expiry_date = result["expiry_date"]
+    #     except:
+    #       expiry_date = "No info"
+    #     print(f"Domain: {domain_name}")
+    #     print(f"Expiry Date: {expiry_date}")
+    #     print("-" * 50) 
+
+    # print("=" * 50)
     # response_rwhois_by_keyword=requests.get(f"{api_url}/?key={self.rwhois_token}&reverse=whois&keyword={self.domain_value}").json()
    # search by keyword might produce lot of false positives
 
