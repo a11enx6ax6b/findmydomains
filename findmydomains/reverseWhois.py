@@ -6,7 +6,7 @@ api_url="https://api.whoxy.com"
 class ReverseWhois():
   def __init__(self,api_config_file):
     self.api_config_file=api_config_file
-    self.active_domains={}
+    self.valid_domains={}
     self.today=date.today()
   def load_rwhois_token(self):
     with open(self.api_config_file,'r') as file:
@@ -43,7 +43,7 @@ class ReverseWhois():
         response_rwhois_by_email=requests.get(f"{api_url}/?key={self.rwhois_token}&reverse=whois&email={email}&mode=micro")
         response_rwhois_by_email=response_rwhois_by_email.json()
         self.capture_rwhois_result(response_rwhois_by_email)
-    return self.active_domains    
+    return self.valid_domains    
   def capture_rwhois_result(self,response_rwhois):
     for result in response_rwhois["search_result"]:
         domain_name = result["domain_name"]
@@ -53,8 +53,8 @@ class ReverseWhois():
             expiry_date = ""
         if domain_name and expiry_date:
           if date.fromisoformat(expiry_date)>self.today:
-            self.active_domains[domain_name]=expiry_date
-    return self.active_domains
+            self.valid_domains[domain_name]={"expiry_date": expiry_date}
+    return self.valid_domains
         
   #def generate_output(self,response_rwhois):
     # identifier = next(iter(response_rwhois["search_identifier"].values()))
