@@ -25,24 +25,26 @@ class ReverseWhois():
     } # whois -> new fn
     response = requests.get(url, headers=headers, params=querystring)
     response=response.json()
-    organziation,email,nameserver=set(),set(),set()
+    organization,email,nameserver=set(),set(),set()
     if isinstance(response["contacts"],dict):
         for info in response["contacts"].values():
-            organziation.add(info[0]['organization'])
+            organization.add(info[0]['organization'])
             email.add(info[0]['email'])
     nameserver=response["nameserver"]
-    verified_organization,verified_email,verified_nameserver=self.verify_data(organziation,email,nameserver) #optimize
+    verified_organization,verified_email,verified_nameserver=self.verify_data(organization,email,nameserver) #optimize
     if verified_organization:
       for org in verified_organization:
         response_rwhois_by_company_name=requests.get(f"{api_url}/?key={self.rwhois_token}&reverse=whois&company={org}&mode=micro") 
         #pagination needed #1#
         response_rwhois_by_company_name=response_rwhois_by_company_name.json()
         self.capture_rwhois_result(response_rwhois_by_company_name)
+
     if verified_email:
       for email in verified_email:
         response_rwhois_by_email=requests.get(f"{api_url}/?key={self.rwhois_token}&reverse=whois&email={email}&mode=micro")
         response_rwhois_by_email=response_rwhois_by_email.json()
         self.capture_rwhois_result(response_rwhois_by_email)
+
     return self.valid_domains    
   def capture_rwhois_result(self,response_rwhois):
     for result in response_rwhois["search_result"]:
@@ -76,7 +78,7 @@ class ReverseWhois():
     # response_rwhois_by_keyword=requests.get(f"{api_url}/?key={self.rwhois_token}&reverse=whois&keyword={self.domain_value}").json()
    # search by keyword might produce lot of false positives
 
-  def verify_data(self,organziation,email,nameserver):
+  def verify_data(self,organization,email,nameserver):
     irrelevant_data=["info@domain-contact.org","REDACTED FOR PRIVACY","REDACTED"]
     cloud_provider_nameservers = [
     "ns-2048.awsdns-64.com",  #AWS nameserver
@@ -122,9 +124,15 @@ class ReverseWhois():
     "ns3.godaddy.com",
     "ns4.godaddy.com",
 ]
-    for data in irrelevant_data:
-        filtered_org={item for item in organziation if data not in item}
-        filtered_email={item for item in email if data not in item}
+
+    filtered_org = [
+        item for item in organization 
+        if not any(data in item for data in irrelevant_data)
+    ]
+    filtered_email = [
+    item for item in email 
+    if not any(data in item for data in irrelevant_data)
+]
     filtered_nameserver=[ item for item in nameserver if item not in cloud_provider_nameservers and self.domain_value in item ]
      # Nameserver will be useful for verification
     filtered_email=self.is_valid_email(filtered_email)
