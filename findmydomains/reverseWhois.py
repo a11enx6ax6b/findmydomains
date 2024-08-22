@@ -8,14 +8,16 @@ class ReverseWhois():
     self.api_config_file=api_config_file
     self.valid_domains={}
     self.today=date.today()
+    
   def load_rwhois_token(self):
     with open(self.api_config_file,'r') as file:
       tokens=json.load(file)
       self.rwhois_token=tokens["reversewhois_api_token"]
       self.whois_token=tokens["whois_api_token"]
-
-  def reverse_whois(self,seed_domain):
+  def reverse_whois(self,seed_domain,max_api_calls=5):
     self.seed_domain=seed_domain
+    max_rwhois_api_calls=max_api_calls
+    current_rwhois_api_calls=0
     self.domain_value=seed_domain.split(".")[-2] if seed_domain.split(".")[-2] not in ["com","co"] else seed_domain.split(".")[-3]
     url = "https://zozor54-whois-lookup-v1.p.rapidapi.com/"
     querystring = {"domain":self.seed_domain,"format":"json","_forceRefresh":"0"}
@@ -27,25 +29,35 @@ class ReverseWhois():
     response=response.json()
     organization,email,nameserver=set(),set(),set()
     if isinstance(response["contacts"],dict):
-        for info in response["contacts"].values():
-            organization.add(info[0]['organization'])
-            email.add(info[0]['email'])
+      for info in response["contacts"].values():
+        organization.add(info[0]['organization'])
+        email.add(info[0]['email'])
     nameserver=response["nameserver"]
     verified_organization,verified_email,verified_nameserver=self.verify_data(organization,email,nameserver) #optimize
     if verified_organization:
       for org in verified_organization:
-        response_rwhois_by_company_name=requests.get(f"{api_url}/?key={self.rwhois_token}&reverse=whois&company={org}&mode=micro") 
-        #pagination needed #1#
-        response_rwhois_by_company_name=response_rwhois_by_company_name.json()
-        self.capture_rwhois_result(response_rwhois_by_company_name)
-
+        current_page=1
+        total_page=1
+        while current_page <= total_page and max_rwhois_api_calls > current_rwhois_api_calls:
+          response_rwhois_by_company_name=requests.get(f"{api_url}/?key={self.rwhois_token}&reverse=whois&company={org}&mode=micro&page={current_page}") 
+          current_rwhois_api_calls+=1
+          #pagination needed #1#
+          response_rwhois_by_company_name=response_rwhois_by_company_name.json()
+          current_page=response_rwhois_by_company_name["current_page"]+1
+          total_page=response_rwhois_by_company_name["total_pages"]
+          self.capture_rwhois_result(response_rwhois_by_company_name)
     if verified_email:
       for email in verified_email:
-        response_rwhois_by_email=requests.get(f"{api_url}/?key={self.rwhois_token}&reverse=whois&email={email}&mode=micro")
-        response_rwhois_by_email=response_rwhois_by_email.json()
-        self.capture_rwhois_result(response_rwhois_by_email)
-
-    return self.valid_domains    
+        current_page=1
+        total_page=1
+        while current_page <= total_page and max_rwhois_api_calls > current_rwhois_api_calls:
+          response_rwhois_by_email=requests.get(f"{api_url}/?key={self.rwhois_token}&reverse=whois&email={email}&mode=micro&page={current_page}")
+          current_rwhois_api_calls+=1
+          response_rwhois_by_email=response_rwhois_by_email.json()
+          current_page=response_rwhois_by_company_name["current_page"]+1
+          total_page=response_rwhois_by_company_name["total_pages"]
+          self.capture_rwhois_result(response_rwhois_by_email)
+    return self.valid_domains,verified_nameserver    
   def capture_rwhois_result(self,response_rwhois):
     for result in response_rwhois["search_result"]:
         domain_name = result["domain_name"]
@@ -55,9 +67,7 @@ class ReverseWhois():
             expiry_date = ""
         if domain_name and expiry_date:
           if date.fromisoformat(expiry_date)>self.today:
-            self.valid_domains[domain_name]={"expiry_date": expiry_date}
-    return self.valid_domains
-        
+            self.valid_domains[domain_name]={"expiry_date": expiry_date}    
   #def generate_output(self,response_rwhois):
     # identifier = next(iter(response_rwhois["search_identifier"].values()))
     # print("=" * 50)
