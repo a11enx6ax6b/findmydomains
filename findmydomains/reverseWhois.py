@@ -4,16 +4,16 @@ import re
 from datetime import date
 api_url="https://api.whoxy.com"
 class ReverseWhois():
-  def __init__(self,api_config_file):
-    self.api_config_file=api_config_file
+  def __init__(self):
     self.valid_domains={}
     self.today=date.today()
-    
-  def load_rwhois_token(self):
+  def load_rwhois_token(self,api_config_file):
+    self.api_config_file=api_config_file
     with open(self.api_config_file,'r') as file:
       tokens=json.load(file)
       self.rwhois_token=tokens["reversewhois_api_token"]
       self.whois_token=tokens["whois_api_token"]
+      return tokens
   def reverse_whois(self,seed_domain,max_api_calls=5):
     self.seed_domain=seed_domain
     max_rwhois_api_calls=max_api_calls
