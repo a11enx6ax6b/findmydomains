@@ -1,11 +1,14 @@
 import requests
 import re
+from verificationllm import VerificationLLM
 class ASNLookup:
-  def __init__(self,sld):
+  def __init__(self,sld,seed_domain):
     self.url = "https://asn.cymru.com/cgi-bin/whois.cgi"
     self.sld=sld
+    self.seed_domain=seed_domain
     self.valid_as_names={}
-  def do_asn_lookup(self,ips):  
+  def do_asn_lookup(self,ips,token_pplx):  
+    self.verification=VerificationLLM(token_pplx)
     for ip in ips:
       self.ip=ip
       headers = {
@@ -41,8 +44,15 @@ class ASNLookup:
     if self.sld.lower() in as_name.lower():
       return as_name
     else:
-      pass #ask llama
-
+      score=self.verification.verify_as_name(as_name,self.seed_domain)
+      if score:
+        if int(score) > 8 :
+          return as_name
+        else:
+          return None
+      else:
+        return None
+      
     
 
 

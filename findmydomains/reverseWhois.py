@@ -7,16 +7,16 @@ class ReverseWhois():
   def __init__(self):
     self.valid_domains={}
     self.today=date.today()
-  def load_rwhois_token(self,api_config_file):
-    self.api_config_file=api_config_file
-    with open(self.api_config_file,'r') as file:
+  @staticmethod
+  def load_rwhois_token(api_config_file):
+    with open(api_config_file,'r') as file:
       tokens=json.load(file)
-      self.rwhois_token=tokens["reversewhois_api_token"]
-      self.whois_token=tokens["whois_api_token"]
       return tokens
-  def reverse_whois(self,seed_domain,second_level_domain,max_api_calls=5):
+  def reverse_whois(self,seed_domain,second_level_domain,token_rwhois,token_whois,max_api_calls=5):
     self.seed_domain=seed_domain
     max_rwhois_api_calls=max_api_calls
+    self.rwhois_token=token_rwhois
+    self.whois_token=token_whois
     current_rwhois_api_calls=0
     self.second_level_domain=second_level_domain
     url = "https://zozor54-whois-lookup-v1.p.rapidapi.com/"
