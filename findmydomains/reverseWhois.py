@@ -14,11 +14,11 @@ class ReverseWhois():
       self.rwhois_token=tokens["reversewhois_api_token"]
       self.whois_token=tokens["whois_api_token"]
       return tokens
-  def reverse_whois(self,seed_domain,max_api_calls=5):
+  def reverse_whois(self,seed_domain,second_level_domain,max_api_calls=5):
     self.seed_domain=seed_domain
     max_rwhois_api_calls=max_api_calls
     current_rwhois_api_calls=0
-    self.domain_value=seed_domain.split(".")[-2] if seed_domain.split(".")[-2] not in ["com","co"] else seed_domain.split(".")[-3]
+    self.second_level_domain=second_level_domain
     url = "https://zozor54-whois-lookup-v1.p.rapidapi.com/"
     querystring = {"domain":self.seed_domain,"format":"json","_forceRefresh":"0"}
     headers = {
@@ -85,7 +85,7 @@ class ReverseWhois():
     #     print("-" * 50) 
 
     # print("=" * 50)
-    # response_rwhois_by_keyword=requests.get(f"{api_url}/?key={self.rwhois_token}&reverse=whois&keyword={self.domain_value}").json()
+    # response_rwhois_by_keyword=requests.get(f"{api_url}/?key={self.rwhois_token}&reverse=whois&keyword={self.second_level_domain}").json()
    # search by keyword might produce lot of false positives
 
   def verify_data(self,organization,email,nameserver):
@@ -143,7 +143,7 @@ class ReverseWhois():
     item for item in email 
     if not any(data in item for data in irrelevant_data)
 ]
-    filtered_nameserver=[ item for item in nameserver if item not in cloud_provider_nameservers and self.domain_value in item ]
+    filtered_nameserver=[ item for item in nameserver if item not in cloud_provider_nameservers and self.second_level_domain in item ]
      # Nameserver will be useful for verification
     filtered_email=self.is_valid_email(filtered_email)
     return filtered_org,filtered_email,filtered_nameserver
