@@ -20,5 +20,6 @@ class FindMyDomains:
   def do_asn_lookup(self):
     asn_lookup=ASNLookup(self.second_level_domain,self.seed_domain)
     self.token_pplx=self.tokens["pplx_token"]
-    self.asn_names=asn_lookup.do_asn_lookup(self.ips,self.token_pplx)
+    self.token_asnlookup=self.tokens["asnlookup"]
+    self.asn_names=asn_lookup.do_asn_lookup(self.ips,self.token_pplx,self.token_asnlookup)
     print(self.asn_names)

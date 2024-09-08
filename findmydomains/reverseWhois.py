@@ -2,6 +2,7 @@ import json
 import requests
 import re
 from datetime import date
+from urllib.parse import quote 
 api_url="https://api.whoxy.com"
 class ReverseWhois():
   def __init__(self):
@@ -34,15 +35,18 @@ class ReverseWhois():
         email.add(info[0]['email'])
     nameserver=response["nameserver"]
     verified_organization,verified_email,verified_nameserver=self.verify_data(organization,email,nameserver) #optimize
+    print(verified_organization)
     if verified_organization:
       for org in verified_organization:
         current_page=1
         total_page=1
         while current_page <= total_page and max_rwhois_api_calls > current_rwhois_api_calls:
-          response_rwhois_by_company_name=requests.get(f"{api_url}/?key={self.rwhois_token}&reverse=whois&company={org}&mode=micro&page={current_page}") 
+          print(org)
+          response_rwhois_by_company_name=requests.get(f"{api_url}/?key={self.rwhois_token}&reverse=whois&company={quote(org,safe='')}&mode=micro&page={current_page}") 
           current_rwhois_api_calls+=1
           #pagination needed #1#
           response_rwhois_by_company_name=response_rwhois_by_company_name.json()
+          print(response_rwhois_by_company_name)
           current_page=response_rwhois_by_company_name["current_page"]+1
           total_page=response_rwhois_by_company_name["total_pages"]
           self.capture_rwhois_result(response_rwhois_by_company_name)
